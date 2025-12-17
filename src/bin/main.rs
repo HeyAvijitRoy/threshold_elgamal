@@ -30,7 +30,7 @@ fn read_number(prompt: &str) -> usize {
 fn main_menu() {
     loop {
         println!("\n╔════════════════════════════════════════════╗");
-        println!("║   THRESHOLD ELGAMAL ENCRYPTION SYSTEM     ║");
+        println!("║   THRESHOLD ELGAMAL ENCRYPTION SYSTEM      ║");
         println!("╚════════════════════════════════════════════╝");
         println!("\nMain Menu:");
         println!("  1. Generate Keys");
