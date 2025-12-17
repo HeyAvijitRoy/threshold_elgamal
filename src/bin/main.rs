@@ -63,21 +63,21 @@ fn generate_keys_interactive() {
     let num_players = read_number("\nEnter number of players (n): ");
     
     if num_players < 2 {
-        println!("❌ Error: Need at least 2 players");
+        println!("Error: Need at least 2 players");
         return;
     }
     
     let threshold = read_number(&format!("Enter threshold (t) - need t+1 players to decrypt (0 to {}): ", num_players - 1));
     
     if threshold >= num_players {
-        println!("❌ Error: Threshold must be less than number of players");
+        println!("Error: Threshold must be less than number of players");
         return;
     }
     
     let output_dir = read_input("\nEnter output directory [keys]: ");
     let output_dir = if output_dir.is_empty() { "keys".to_string() } else { output_dir };
     
-    println!("\n📊 Configuration:");
+    println!("\nConfiguration:");
     println!("   Players: {}", num_players);
     println!("   Threshold: {} (need {} to decrypt)", threshold, threshold + 1);
     println!("   Output: {}/", output_dir);
@@ -88,7 +88,7 @@ fn generate_keys_interactive() {
         return;
     }
     
-    println!("\n⚙️  Generating keys...");
+    println!("\n Generating keys...");
     
     // Load system parameters
     let g = SystemParams::g();
@@ -114,14 +114,14 @@ fn generate_keys_interactive() {
     
     // Create output directory
     if let Err(e) = fs::create_dir_all(&output_dir) {
-        println!("❌ Error creating directory: {}", e);
+        println!("Error creating directory: {}", e);
         return;
     }
     
     // Save public key
     let public_key_json = serde_json::to_string_pretty(&public_key).unwrap();
     if let Err(e) = fs::write(format!("{}/public_key.json", output_dir), public_key_json) {
-        println!("❌ Error saving public key: {}", e);
+        println!("Error saving public key: {}", e);
         return;
     }
     
@@ -141,15 +141,15 @@ fn generate_keys_interactive() {
             format!("{}/player_{}_key.json", output_dir, player_id),
             share_json,
         ) {
-            println!("❌ Error saving player {} key: {}", player_id, e);
+            println!("Error saving player {} key: {}", player_id, e);
             return;
         }
     }
     
-    println!("\n✅ Key generation complete!");
+    println!("\nKey generation complete!");
     println!("   Public key: {}/public_key.json", output_dir);
     println!("   Player keys: {}/player_N_key.json (N=1 to {})", output_dir, num_players);
-    println!("\n⚠️  Secret key has been wiped from memory (trusted setup)");
+    println!("\n Secret key has been wiped from memory (trusted setup)");
 }
 
 fn encrypt_interactive() {
@@ -168,7 +168,7 @@ fn encrypt_interactive() {
     let public_key_json = match fs::read_to_string(&public_key_path) {
         Ok(content) => content,
         Err(e) => {
-            println!("❌ Error reading public key: {}", e);
+            println!("Error reading public key: {}", e);
             return;
         }
     };
@@ -176,7 +176,7 @@ fn encrypt_interactive() {
     let public_key: PublicKey = match serde_json::from_str(&public_key_json) {
         Ok(key) => key,
         Err(e) => {
-            println!("❌ Error parsing public key: {}", e);
+            println!("Error parsing public key: {}", e);
             return;
         }
     };
@@ -191,7 +191,7 @@ fn encrypt_interactive() {
         "1" => {
             let msg = read_input("\nEnter message to encrypt: ");
             if msg.is_empty() {
-                println!("❌ Error: Message cannot be empty");
+                println!("Error: Message cannot be empty");
                 return;
             }
             msg.into_bytes()
@@ -201,13 +201,13 @@ fn encrypt_interactive() {
             match fs::read(&file_path) {
                 Ok(content) => content,
                 Err(e) => {
-                    println!("❌ Error reading file: {}", e);
+                    println!("Error reading file: {}", e);
                     return;
                 }
             }
         }
         _ => {
-            println!("❌ Invalid choice");
+            println!("Invalid choice");
             return;
         }
     };
@@ -219,23 +219,23 @@ fn encrypt_interactive() {
         output_path
     };
     
-    println!("\n⚙️  Encrypting {} bytes...", message.len());
+    println!("\n Encrypting {} bytes...", message.len());
     
     let ciphertext = match encrypt(&public_key, &message) {
         Ok(ct) => ct,
         Err(e) => {
-            println!("❌ Encryption error: {}", e);
+            println!("Encryption error: {}", e);
             return;
         }
     };
     
     let ciphertext_json = serde_json::to_string_pretty(&ciphertext).unwrap();
     if let Err(e) = fs::write(&output_path, ciphertext_json) {
-        println!("❌ Error saving ciphertext: {}", e);
+        println!("Error saving ciphertext: {}", e);
         return;
     }
     
-    println!("\n✅ Encryption complete!");
+    println!("\nEncryption complete!");
     println!("   Ciphertext saved to: {}", output_path);
 }
 
@@ -250,7 +250,7 @@ fn decrypt_phase1_interactive() {
     let key_json = match fs::read_to_string(&key_file) {
         Ok(content) => content,
         Err(e) => {
-            println!("❌ Error reading key file: {}", e);
+            println!("Error reading key file: {}", e);
             return;
         }
     };
@@ -258,7 +258,7 @@ fn decrypt_phase1_interactive() {
     let secret_share: SecretKeyShare = match serde_json::from_str(&key_json) {
         Ok(share) => share,
         Err(e) => {
-            println!("❌ Error parsing key file: {}", e);
+            println!("Error parsing key file: {}", e);
             return;
         }
     };
@@ -276,7 +276,7 @@ fn decrypt_phase1_interactive() {
     let ciphertext_json = match fs::read_to_string(&ciphertext_path) {
         Ok(content) => content,
         Err(e) => {
-            println!("❌ Error reading ciphertext: {}", e);
+            println!("Error reading ciphertext: {}", e);
             return;
         }
     };
@@ -284,7 +284,7 @@ fn decrypt_phase1_interactive() {
     let ciphertext: Ciphertext = match serde_json::from_str(&ciphertext_json) {
         Ok(ct) => ct,
         Err(e) => {
-            println!("❌ Error parsing ciphertext: {}", e);
+            println!("Error parsing ciphertext: {}", e);
             return;
         }
     };
@@ -298,14 +298,14 @@ fn decrypt_phase1_interactive() {
     {
         Ok(ids) => ids,
         Err(_) => {
-            println!("❌ Error: Invalid player IDs format");
+            println!("Error: Invalid player IDs format");
             println!("   Example: 1,2,3 or 1,3,5");
             return;
         }
     };
     
     if player_ids.is_empty() {
-        println!("❌ Error: No player IDs provided");
+        println!("Error: No player IDs provided");
         return;
     }
     
@@ -317,11 +317,11 @@ fn decrypt_phase1_interactive() {
     println!("   Parsed as: {:?}", player_ids);
     
     if !player_ids.contains(&secret_share.player_id) {
-        println!("❌ Error: Player {} is not in the participating players list", secret_share.player_id);
+        println!("Error: Player {} is not in the participating players list", secret_share.player_id);
         return;
     }
     
-    println!("\n📊 Participating players: {:?}", player_ids);
+    println!("\nParticipating players: {:?}", player_ids);
     
     let output_path = read_input(&format!("\nEnter output file path [share_player_{}.json]: ", secret_share.player_id));
     let output_path = if output_path.is_empty() {
@@ -330,7 +330,7 @@ fn decrypt_phase1_interactive() {
         output_path
     };
     
-    println!("\n⚙️  Computing Lagrange coefficients...");
+    println!("\nComputing Lagrange coefficients...");
     
     // Compute Lagrange coefficients
     let q_bigint = secret_share.public_key.q.to_bigint().unwrap();
@@ -349,7 +349,7 @@ fn decrypt_phase1_interactive() {
     };
     let exponent_uint = exponent.to_biguint().unwrap();
     
-    println!("⚙️  Computing decryption share...");
+    println!("Computing decryption share...");
     
     // Compute B^{w_k * a_{p_k}} mod p
     let share_value = mod_pow(&ciphertext.b_component, &exponent_uint, &secret_share.public_key.p);
@@ -361,13 +361,13 @@ fn decrypt_phase1_interactive() {
     
     let share_json = serde_json::to_string_pretty(&decryption_share).unwrap();
     if let Err(e) = fs::write(&output_path, share_json) {
-        println!("❌ Error saving decryption share: {}", e);
+        println!("Error saving decryption share: {}", e);
         return;
     }
     
-    println!("\n✅ Decryption share generated!");
+    println!("\nDecryption share generated!");
     println!("   Share saved to: {}", output_path);
-    println!("\n📤 Share this file with other participating players for Phase 2.");
+    println!("\nShare this file with other participating players for Phase 2.");
 }
 
 fn decrypt_phase2_interactive() {
@@ -386,7 +386,7 @@ fn decrypt_phase2_interactive() {
     let ciphertext_json = match fs::read_to_string(&ciphertext_path) {
         Ok(content) => content,
         Err(e) => {
-            println!("❌ Error reading ciphertext: {}", e);
+            println!("Error reading ciphertext: {}", e);
             return;
         }
     };
@@ -394,7 +394,7 @@ fn decrypt_phase2_interactive() {
     let ciphertext: Ciphertext = match serde_json::from_str(&ciphertext_json) {
         Ok(ct) => ct,
         Err(e) => {
-            println!("❌ Error parsing ciphertext: {}", e);
+            println!("Error parsing ciphertext: {}", e);
             return;
         }
     };
@@ -410,7 +410,7 @@ fn decrypt_phase2_interactive() {
     let public_key_json = match fs::read_to_string(&public_key_path) {
         Ok(content) => content,
         Err(e) => {
-            println!("❌ Error reading public key: {}", e);
+            println!("Error reading public key: {}", e);
             return;
         }
     };
@@ -418,7 +418,7 @@ fn decrypt_phase2_interactive() {
     let public_key: PublicKey = match serde_json::from_str(&public_key_json) {
         Ok(key) => key,
         Err(e) => {
-            println!("❌ Error parsing public key: {}", e);
+            println!("Error parsing public key: {}", e);
             return;
         }
     };
@@ -427,14 +427,14 @@ fn decrypt_phase2_interactive() {
     
     let share_files: Vec<&str> = shares_input.split(',').map(|s| s.trim()).collect();
     
-    println!("\n📥 Loading {} decryption shares...", share_files.len());
+    println!("\nLoading {} decryption shares...", share_files.len());
     
     let mut decryption_shares = Vec::new();
     for file in &share_files {
         let share_json = match fs::read_to_string(file) {
             Ok(content) => content,
             Err(e) => {
-                println!("❌ Error reading {}: {}", file, e);
+                println!("Error reading {}: {}", file, e);
                 return;
             }
         };
@@ -442,7 +442,7 @@ fn decrypt_phase2_interactive() {
         let share: DecryptionShare = match serde_json::from_str(&share_json) {
             Ok(s) => s,
             Err(e) => {
-                println!("❌ Error parsing {}: {}", file, e);
+                println!("Error parsing {}: {}", file, e);
                 return;
             }
         };
@@ -452,7 +452,7 @@ fn decrypt_phase2_interactive() {
     }
     
     if decryption_shares.is_empty() {
-        println!("❌ Error: No decryption shares provided");
+        println!("Error: No decryption shares provided");
         return;
     }
     
@@ -463,7 +463,7 @@ fn decrypt_phase2_interactive() {
         output_path
     };
     
-    println!("\n⚙️  Combining decryption shares...");
+    println!("\n Combining decryption shares...");
     
     // Combine shares: B^a = ∏ B^{w_k * a_{p_k}}
     let mut b_to_a = BigUint::one();
@@ -471,39 +471,40 @@ fn decrypt_phase2_interactive() {
         b_to_a = (&b_to_a * &share.share_value) % &public_key.p;
     }
     
-    println!("⚙️  Computing AES key...");
+    println!(" Computing AES key...");
     let aes_key = hash_to_key(&b_to_a);
     
-    println!("⚙️  Decrypting message...");
+    println!(" Decrypting message...");
     
     let plaintext = match aes_decrypt(&aes_key, &ciphertext.encrypted_message, &ciphertext.nonce) {
         Ok(pt) => pt,
         Err(e) => {
-            println!("❌ Decryption error: {}", e);
-            println!("\n⚠️  This could mean:");
+            println!("Decryption error: {}", e);
+            println!("\n  May be...:");
             println!("   - Not enough shares provided");
             println!("   - Wrong shares or wrong player combination");
             println!("   - Players used different player lists in Phase 1");
+            println!("   - Retrace to find missing or incorrect shares, or player combination");
             return;
         }
     };
     
     if let Err(e) = fs::write(&output_path, &plaintext) {
-        println!("❌ Error saving decrypted message: {}", e);
+        println!("Error saving decrypted message: {}", e);
         return;
     }
     
-    println!("\n✅ Decryption complete!");
+    println!("\nDecryption complete!");
     println!("   Decrypted message saved to: {}", output_path);
     
     // Try to print message if it's valid UTF-8
     if let Ok(text) = String::from_utf8(plaintext.clone()) {
-        println!("\n📨 Decrypted message:");
+        println!("\n Decrypted message:");
         println!("┌─────────────────────────────────────────┐");
         println!("│ {:<39} │", text);
         println!("└─────────────────────────────────────────┘");
     } else {
-        println!("\n📦 Decrypted {} bytes (binary data)", plaintext.len());
+        println!("\n Decrypted {} bytes (binary data)", plaintext.len());
     }
 }
 
