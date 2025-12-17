@@ -97,13 +97,41 @@ fn main() {
         
         println!("  Player {}: share value bits = {}", player_id, share_value.bits());
         
+        // Generate ZKP for this share
+        let proof = generate_decryption_proof(
+            &ciphertext.b_component,
+            &share_value,
+            &exponent_uint,
+            &p,
+            &q,
+        );
+        
         decryption_shares.push(DecryptionShare {
             player_id,
             share_value,
+            proof,
         });
     }
     
-    println!("\nStep 5: Decryption Phase 2 (Combine Shares)");
+    println!("\nStep 5: Decryption Phase 2 (Verify Proofs)");
+    for share in &decryption_shares {
+        let is_valid = verify_decryption_proof(
+            &ciphertext.b_component,
+            &share.share_value,
+            &share.proof,
+            &p,
+            &q,
+        );
+        
+        if !is_valid {
+            println!("❌ ZKP verification failed for player {}!", share.player_id);
+            return;
+        }
+        
+        println!("  ✓ Player {} proof verified", share.player_id);
+    }
+    
+    println!("\nStep 6: Combine Shares");
     let mut b_to_a = BigUint::one();
     for share in &decryption_shares {
         b_to_a = (&b_to_a * &share.share_value) % &p;

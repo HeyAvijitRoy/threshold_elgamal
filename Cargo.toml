@@ -19,10 +19,6 @@ name = "test"
 path = "src/bin/test.rs"
 
 [[bin]]
-name = "interactive"
-path = "src/bin/interactive.rs"
-
-[[bin]]
 name = "keygen"
 path = "src/bin/keygen.rs"
 

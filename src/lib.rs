@@ -81,9 +81,16 @@ pub struct Ciphertext {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct DecryptionShareProof {
+    pub commitment: BigUint,  // R = B^r
+    pub response: BigUint,     // z = r + c * (w_k * a_pk) mod q
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct DecryptionShare {
     pub player_id: usize,
     pub share_value: BigUint, // B^{w_k * a_{p_k}}
+    pub proof: DecryptionShareProof, // ZKP that share_value is correctly computed
 }
 
 // Hash function to derive AES key from group element
@@ -115,4 +122,89 @@ pub fn aes_decrypt(key: &[u8; 32], ciphertext: &[u8], nonce: &[u8]) -> Result<Ve
     cipher
         .decrypt(nonce, ciphertext)
         .map_err(|e| format!("Decryption error: {}", e))
+}
+
+// Hash function to derive challenge for Fiat-Shamir heuristic
+// Hash(B || share_value || R) -> challenge
+// Note: We include share_value to bind the proof to the specific claim
+// The challenge doesn't need to be reduced - we just use the hash output
+pub fn hash_to_challenge(
+    b_component: &BigUint,
+    share_value: &BigUint,
+    commitment: &BigUint,
+) -> BigUint {
+    let mut hasher = Sha256::new();
+    hasher.update(b_component.to_bytes_be());
+    hasher.update(share_value.to_bytes_be());
+    hasher.update(commitment.to_bytes_be());
+    let hash = hasher.finalize();
+    
+    // Convert hash to BigUint (256 bits)
+    // No reduction needed - the challenge is just the hash value
+    BigUint::from_bytes_be(&hash)
+}
+
+// Generate ZKP for decryption share
+// Proves knowledge of (w_k * a_pk) such that share_value = B^(w_k * a_pk)
+// Using Schnorr-like protocol:
+// 1. Choose random r
+// 2. Compute R = B^r
+// 3. Compute challenge c = H(B || share_value || R)
+// 4. Compute response z = r + c * (w_k * a_pk) mod q
+pub fn generate_decryption_proof(
+    b_component: &BigUint,
+    share_value: &BigUint,
+    exponent: &BigUint,  // w_k * a_pk mod q
+    p: &BigUint,
+    q: &BigUint,
+) -> DecryptionShareProof {
+    use rand::thread_rng;
+    
+    let mut rng = thread_rng();
+    
+    // 1. Choose random r ← Z_q
+    let r = rng.gen_biguint_below(q);
+    
+    // 2. Compute commitment R = B^r mod p
+    let commitment = mod_pow(b_component, &r, p);
+    
+    // 3. Compute challenge c = H(B || share_value || R)
+    let challenge = hash_to_challenge(b_component, share_value, &commitment);
+    
+    // 4. Compute response z = r + c * exponent
+    // Note: We don't reduce mod q because B = g^b might not have order q
+    // Instead, we work mod (p-1) since that's the order of the multiplicative group
+    // By Fermat's Little Theorem: a^x ≡ a^(x mod (p-1)) (mod p)
+    let p_minus_1 = p - BigUint::one();
+    let response = (&r + &challenge * exponent) % &p_minus_1;
+    
+    DecryptionShareProof {
+        commitment,
+        response,
+    }
+}
+
+// Verify ZKP for decryption share
+// Verifies that share_value = B^(w_k * a_pk) for some secret (w_k * a_pk)
+// Check: B^z == R * share_value^c mod p
+// where c = H(B || share_value || R)
+pub fn verify_decryption_proof(
+    b_component: &BigUint,
+    share_value: &BigUint,
+    proof: &DecryptionShareProof,
+    p: &BigUint,
+    q: &BigUint,
+) -> bool {
+    // Recompute challenge c = H(B || share_value || R)
+    let challenge = hash_to_challenge(b_component, share_value, &proof.commitment);
+    
+    // Compute left side: B^z mod p
+    let left = mod_pow(b_component, &proof.response, p);
+    
+    // Compute right side: R * share_value^c mod p
+    let share_to_c = mod_pow(share_value, &challenge, p);
+    let right = (&proof.commitment * share_to_c) % p;
+    
+    // Verify equality
+    left == right
 }

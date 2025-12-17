@@ -120,9 +120,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("  Share value bits: {}", share_value.bits());
     }
     
+    // Generate Zero-Knowledge Proof
+    println!("Generating Zero-Knowledge Proof...");
+    let proof = threshold_elgamal::generate_decryption_proof(
+        &ciphertext.b_component,
+        &share_value,
+        &exponent_uint,
+        &secret_share.public_key.p,
+        &secret_share.public_key.q,
+    );
+    
+    if args.debug {
+        println!("  Proof commitment bits: {}", proof.commitment.bits());
+        println!("  Proof response bits: {}", proof.response.bits());
+    }
+    
     let decryption_share = DecryptionShare {
         player_id: secret_share.player_id,
         share_value,
+        proof,
     };
     
     // Save decryption share

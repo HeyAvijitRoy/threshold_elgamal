@@ -58,6 +58,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("No decryption shares provided".into());
     }
     
+    // Verify all ZKPs before combining shares
+    println!("Verifying Zero-Knowledge Proofs...");
+    for share in &decryption_shares {
+        let is_valid = threshold_elgamal::verify_decryption_proof(
+            &ciphertext.b_component,
+            &share.share_value,
+            &share.proof,
+            &public_key.p,
+            &public_key.q,
+        );
+        
+        if !is_valid {
+            return Err(format!(
+                "❌ ZKP verification failed for player {}! Share may be invalid or malicious.",
+                share.player_id
+            ).into());
+        }
+        
+        println!("  ✓ Player {} proof verified", share.player_id);
+    }
+    
+    println!("✓ All proofs verified successfully!");
+    
     // Combine shares: B^a = ∏ B^{w_k * a_{p_k}}
     println!("Combining decryption shares...");
     let mut b_to_a = BigUint::one();

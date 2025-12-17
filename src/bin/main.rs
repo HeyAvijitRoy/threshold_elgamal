@@ -354,9 +354,19 @@ fn decrypt_phase1_interactive() {
     // Compute B^{w_k * a_{p_k}} mod p
     let share_value = mod_pow(&ciphertext.b_component, &exponent_uint, &secret_share.public_key.p);
     
+    // Generate Zero-Knowledge Proof
+    let proof = generate_decryption_proof(
+        &ciphertext.b_component,
+        &share_value,
+        &exponent_uint,
+        &secret_share.public_key.p,
+        &secret_share.public_key.q,
+    );
+    
     let decryption_share = DecryptionShare {
         player_id: secret_share.player_id,
         share_value,
+        proof,
     };
     
     let share_json = serde_json::to_string_pretty(&decryption_share).unwrap();
@@ -462,6 +472,27 @@ fn decrypt_phase2_interactive() {
     } else {
         output_path
     };
+    
+    // Verify all ZKPs before combining shares
+    println!("\n Verifying Zero-Knowledge Proofs...");
+    for share in &decryption_shares {
+        let is_valid = verify_decryption_proof(
+            &ciphertext.b_component,
+            &share.share_value,
+            &share.proof,
+            &public_key.p,
+            &public_key.q,
+        );
+        
+        if !is_valid {
+            println!("❌ ZKP verification failed for player {}! Share may be invalid or malicious.", share.player_id);
+            return;
+        }
+        
+        println!("  ✓ Player {} proof verified", share.player_id);
+    }
+    
+    println!(" ✓ All proofs verified successfully!");
     
     println!("\n Combining decryption shares...");
     
