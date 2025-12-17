@@ -1,0 +1,78 @@
+# ---- Rust / Cargo ----
+# Build outputs
+/target/
+**/target/
+
+# Artifacts
+*.rlib
+*.rmeta
+
+# Debug and release binaries
+**/*.exe
+**/*.dll
+**/*.dylib
+**/*.so
+
+# Cargo
+Cargo.lock
+.cargo/
+
+# Incremental compilation
+**/target/**/incremental/
+
+# Coverage
+coverage/
+**/coverage/
+*.lcov
+
+# ---- Rust Tools ----
+# Rustfmt / Clippy
+.clippy.toml
+.rustfmt.toml
+
+# Rustup toolchains
+rustup-toolchain
+
+# ---- Editors / IDEs ----
+# VS Code
+.vscode/
+
+# IntelliJ / CLion / RustRover
+.idea/
+*.iml
+
+# Emacs / Vim
+*~
+.#*
+*.swp
+*.swo
+
+# ---- OS / Misc ----
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Logs / temp
+*.log
+logs/
+.tmp/
+.temp/
+
+# ---- Other language/tool artifacts (if present) ----
+# Node
+node_modules/
+
+# Python
+__pycache__/
+*.pyc
+
+# ---- Project-specific ----
+# Ignore generated inputs/outputs if any
+inputs/**/generated/
+outputs/
