@@ -32,17 +32,17 @@ struct Args {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
     
-    // Load public key
+    // Load the system public key
     println!("Loading public key from {}...", args.public_key);
     let public_key_json = fs::read_to_string(&args.public_key)?;
     let public_key: PublicKey = serde_json::from_str(&public_key_json)?;
     
-    // Load ciphertext
+    // Load the ciphertext to decrypt
     println!("Loading ciphertext from {}...", args.ciphertext);
     let ciphertext_json = fs::read_to_string(&args.ciphertext)?;
     let ciphertext: Ciphertext = serde_json::from_str(&ciphertext_json)?;
     
-    // Load all decryption shares
+    // Load decryption shares from all participating players
     let share_files: Vec<&str> = args.shares.split(',').map(|s| s.trim()).collect();
     println!("Loading {} decryption shares...", share_files.len());
     
@@ -58,7 +58,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("No decryption shares provided".into());
     }
     
-    // Verify all ZKPs before combining shares
+    // CRITICAL: Verify all zero-knowledge proofs before using the shares
+    // This ensures each share was computed correctly and prevents malicious players
+    // from corrupting the decryption
     println!("Verifying Zero-Knowledge Proofs...");
     for share in &decryption_shares {
         let is_valid = threshold_elgamal::verify_decryption_proof(
@@ -71,7 +73,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         
         if !is_valid {
             return Err(format!(
-                "❌ ZKP verification failed for player {}! Share may be invalid or malicious.",
+                "ZKP verification failed for player {}! Share may be invalid or malicious.",
                 share.player_id
             ).into());
         }
@@ -81,7 +83,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     println!("✓ All proofs verified successfully!");
     
-    // Combine shares: B^a = ∏ B^{w_k * a_{p_k}}
+    // Combine the verified shares to recover B^a = ∏ B^{w_k * a_{p_k}}
+    // The Lagrange interpolation happens implicitly through the coefficients
     println!("Combining decryption shares...");
     let mut b_to_a = BigUint::one();
     

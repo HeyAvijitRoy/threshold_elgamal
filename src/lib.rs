@@ -14,7 +14,8 @@ pub mod vandermonde;
 
 use params::SystemParams;
 
-// Modular exponentiation: base^exp mod modulus
+/// Computes modular exponentiation: base^exp mod modulus
+/// Uses binary exponentiation for efficiency - O(log exp) multiplications
 pub fn mod_pow(base: &BigUint, exp: &BigUint, modulus: &BigUint) -> BigUint {
     if modulus.is_one() {
         return BigUint::zero();
@@ -35,7 +36,9 @@ pub fn mod_pow(base: &BigUint, exp: &BigUint, modulus: &BigUint) -> BigUint {
     result
 }
 
-// Modular inverse using extended Euclidean algorithm
+/// Computes modular multiplicative inverse using Extended Euclidean Algorithm
+/// Returns Some(a^-1 mod m) if it exists, None otherwise
+/// The inverse exists iff gcd(a, m) = 1
 pub fn mod_inverse(a: &BigInt, m: &BigInt) -> Option<BigInt> {
     let (mut t, mut newt) = (BigInt::zero(), BigInt::one());
     let (mut r, mut newr) = (m.clone(), a.clone());
@@ -62,7 +65,7 @@ pub struct PublicKey {
     pub g: BigUint,
     pub p: BigUint,
     pub q: BigUint,
-    pub a_pub: BigUint, // A = g^a
+    pub a_pub: BigUint, // Public key: A = g^a where a is the secret
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -70,30 +73,31 @@ pub struct SecretKeyShare {
     pub player_id: usize,
     pub share: BigUint,
     pub public_key: PublicKey,
-    pub player_public_key: BigUint, // A_i = g^{a_i}
+    pub player_public_key: BigUint, // Individual public key: A_i = g^{a_i}
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Ciphertext {
-    pub b_component: BigUint, // B = g^b
-    pub encrypted_message: Vec<u8>, // AES ciphertext
+    pub b_component: BigUint, // ElGamal component: B = g^b where b is ephemeral
+    pub encrypted_message: Vec<u8>, // Hybrid: message encrypted with AES
     pub nonce: Vec<u8>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct DecryptionShareProof {
-    pub commitment: BigUint,  // R = B^r
-    pub response: BigUint,     // z = r + c * (w_k * a_pk) mod q
+    pub commitment: BigUint,  // Schnorr commitment: R = B^r for random r
+    pub response: BigUint,     // Schnorr response: z = r + c*(w_k * a_pk) mod (p-1)
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct DecryptionShare {
     pub player_id: usize,
-    pub share_value: BigUint, // B^{w_k * a_{p_k}}
-    pub proof: DecryptionShareProof, // ZKP that share_value is correctly computed
+    pub share_value: BigUint, // Decryption contribution: B^{w_k * a_{p_k}}
+    pub proof: DecryptionShareProof, // Zero-knowledge proof of correct computation
 }
 
-// Hash function to derive AES key from group element
+/// Derives AES-256 key from a group element using SHA-256
+/// Used to convert ElGamal shared secret into symmetric encryption key
 pub fn hash_to_key(element: &BigUint) -> [u8; 32] {
     let bytes = element.to_bytes_be();
     let mut hasher = Sha256::new();
@@ -101,7 +105,8 @@ pub fn hash_to_key(element: &BigUint) -> [u8; 32] {
     hasher.finalize().into()
 }
 
-// AES encryption
+/// Encrypts plaintext using AES-256-GCM with a random nonce
+/// Returns (ciphertext, nonce) tuple for authenticated encryption
 pub fn aes_encrypt(key: &[u8; 32], plaintext: &[u8]) -> Result<(Vec<u8>, Vec<u8>), String> {
     let cipher = Aes256Gcm::new(key.into());
     let nonce_bytes = rand::random::<[u8; 12]>();
@@ -114,7 +119,8 @@ pub fn aes_encrypt(key: &[u8; 32], plaintext: &[u8]) -> Result<(Vec<u8>, Vec<u8>
     Ok((ciphertext, nonce_bytes.to_vec()))
 }
 
-// AES decryption
+/// Decrypts ciphertext using AES-256-GCM with the provided nonce
+/// Verifies authenticity and returns plaintext on success
 pub fn aes_decrypt(key: &[u8; 32], ciphertext: &[u8], nonce: &[u8]) -> Result<Vec<u8>, String> {
     let cipher = Aes256Gcm::new(key.into());
     let nonce = Nonce::from_slice(nonce);
@@ -124,10 +130,17 @@ pub fn aes_decrypt(key: &[u8; 32], ciphertext: &[u8], nonce: &[u8]) -> Result<Ve
         .map_err(|e| format!("Decryption error: {}", e))
 }
 
-// Hash function to derive challenge for Fiat-Shamir heuristic
-// Hash(B || share_value || R) -> challenge
-// Note: We include share_value to bind the proof to the specific claim
-// The challenge doesn't need to be reduced - we just use the hash output
+/// Derives challenge for Fiat-Shamir heuristic using SHA-256
+/// 
+/// Computes: c = H(B || share_value || R)
+/// 
+/// Including all three values binds the challenge to:
+/// - The ciphertext component B
+/// - The claimed share value
+/// - The proof commitment R
+/// 
+/// This makes the proof non-interactive and secure in the random oracle model.
+/// The 256-bit hash output provides sufficient challenge space.
 pub fn hash_to_challenge(
     b_component: &BigUint,
     share_value: &BigUint,
@@ -139,18 +152,26 @@ pub fn hash_to_challenge(
     hasher.update(commitment.to_bytes_be());
     let hash = hasher.finalize();
     
-    // Convert hash to BigUint (256 bits)
-    // No reduction needed - the challenge is just the hash value
     BigUint::from_bytes_be(&hash)
 }
 
-// Generate ZKP for decryption share
-// Proves knowledge of (w_k * a_pk) such that share_value = B^(w_k * a_pk)
-// Using Schnorr-like protocol:
-// 1. Choose random r
-// 2. Compute R = B^r
-// 3. Compute challenge c = H(B || share_value || R)
-// 4. Compute response z = r + c * (w_k * a_pk) mod q
+/// Generates a zero-knowledge proof for a decryption share
+/// 
+/// Proves knowledge of exponent x = (w_k * a_pk) such that share_value = B^x,
+/// without revealing x itself. Based on Schnorr's identification protocol.
+/// 
+/// Protocol steps:
+/// 1. Choose random r ← Z_q
+/// 2. Compute commitment: R = B^r mod p
+/// 3. Compute challenge: c = H(B || share_value || R)  [Fiat-Shamir]
+/// 4. Compute response: z = r + c*x mod (p-1)
+/// 
+/// The verifier can check: B^z = R * share_value^c (mod p)
+/// 
+/// Important: We reduce the response modulo (p-1) rather than q because:
+/// - B = g^b has unknown order (not necessarily q)
+/// - The full multiplicative group mod p has order (p-1)
+/// - By Fermat's Little Theorem: a^x ≡ a^(x mod (p-1)) (mod p)
 pub fn generate_decryption_proof(
     b_component: &BigUint,
     share_value: &BigUint,
@@ -162,19 +183,10 @@ pub fn generate_decryption_proof(
     
     let mut rng = thread_rng();
     
-    // 1. Choose random r ← Z_q
     let r = rng.gen_biguint_below(q);
-    
-    // 2. Compute commitment R = B^r mod p
     let commitment = mod_pow(b_component, &r, p);
-    
-    // 3. Compute challenge c = H(B || share_value || R)
     let challenge = hash_to_challenge(b_component, share_value, &commitment);
     
-    // 4. Compute response z = r + c * exponent
-    // Note: We don't reduce mod q because B = g^b might not have order q
-    // Instead, we work mod (p-1) since that's the order of the multiplicative group
-    // By Fermat's Little Theorem: a^x ≡ a^(x mod (p-1)) (mod p)
     let p_minus_1 = p - BigUint::one();
     let response = (&r + &challenge * exponent) % &p_minus_1;
     
@@ -184,10 +196,20 @@ pub fn generate_decryption_proof(
     }
 }
 
-// Verify ZKP for decryption share
-// Verifies that share_value = B^(w_k * a_pk) for some secret (w_k * a_pk)
-// Check: B^z == R * share_value^c mod p
-// where c = H(B || share_value || R)
+/// Verifies a zero-knowledge proof for a decryption share
+/// 
+/// Checks that the prover knows x such that share_value = B^x,
+/// without learning anything about x itself.
+/// 
+/// Verification equation: B^z ≟ R * share_value^c (mod p)
+/// where c = H(B || share_value || R) is recomputed
+/// 
+/// This works because:
+/// - If share_value = B^x and z = r + c*x, then:
+/// - B^z = B^(r + c*x) = B^r * B^(c*x) = R * (B^x)^c = R * share_value^c
+/// 
+/// Soundness: A cheating prover cannot forge a valid proof without knowing x
+/// Zero-knowledge: The proof reveals nothing about x beyond the validity of the claim
 pub fn verify_decryption_proof(
     b_component: &BigUint,
     share_value: &BigUint,
@@ -195,16 +217,12 @@ pub fn verify_decryption_proof(
     p: &BigUint,
     q: &BigUint,
 ) -> bool {
-    // Recompute challenge c = H(B || share_value || R)
     let challenge = hash_to_challenge(b_component, share_value, &proof.commitment);
     
-    // Compute left side: B^z mod p
     let left = mod_pow(b_component, &proof.response, p);
     
-    // Compute right side: R * share_value^c mod p
     let share_to_c = mod_pow(share_value, &challenge, p);
     let right = (&proof.commitment * share_to_c) % p;
     
-    // Verify equality
     left == right
 }

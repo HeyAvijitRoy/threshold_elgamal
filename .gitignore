@@ -64,14 +64,6 @@ logs/
 .tmp/
 .temp/
 
-# ---- Other language/tool artifacts (if present) ----
-# Node
-node_modules/
-
-# Python
-__pycache__/
-*.pyc
-
 # ---- Project-specific ----
 # Ignore generated inputs/outputs if any
 inputs/**/generated/

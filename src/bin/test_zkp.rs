@@ -62,10 +62,10 @@ fn main() {
     );
     
     if is_valid {
-        println!("  ✅ Proof verification PASSED!");
+        println!("  Proof verification PASSED!");
         println!("  The prover knows the exponent without revealing it.");
     } else {
-        println!("  ❌ Proof verification FAILED!");
+        println!("  Proof verification FAILED!");
         println!("  This should not happen with a valid proof.");
     }
     
@@ -87,10 +87,10 @@ fn main() {
     );
     
     if !is_valid_wrong {
-        println!("  ✅ Correctly REJECTED invalid proof!");
+        println!("  Correctly REJECTED invalid proof!");
         println!("  The proof doesn't match the wrong share value.");
     } else {
-        println!("  ❌ SECURITY ISSUE: Accepted invalid proof!");
+        println!("  SECURITY ISSUE: Accepted invalid proof!");
     }
     
     // Test 3: Try to verify with wrong B component (should fail)
@@ -111,10 +111,10 @@ fn main() {
     );
     
     if !is_valid_wrong_b {
-        println!("  ✅ Correctly REJECTED invalid proof!");
+        println!("  Correctly REJECTED invalid proof!");
         println!("  The proof doesn't match the wrong B component.");
     } else {
-        println!("  ❌ SECURITY ISSUE: Accepted invalid proof!");
+        println!("  SECURITY ISSUE: Accepted invalid proof!");
     }
     
     // Test 4: Multiple proofs for the same values
@@ -131,9 +131,9 @@ fn main() {
     let valid2 = verify_decryption_proof(&b_component, &share_value, &proof2, &p, &q);
     let valid3 = verify_decryption_proof(&b_component, &share_value, &proof3, &p, &q);
     
-    println!("  Proof 1 valid: {}", if valid1 { "✅" } else { "❌" });
-    println!("  Proof 2 valid: {}", if valid2 { "✅" } else { "❌" });
-    println!("  Proof 3 valid: {}", if valid3 { "✅" } else { "❌" });
+    println!("  Proof 1 valid: {}", if valid1 { "✓" } else { "✗" });
+    println!("  Proof 2 valid: {}", if valid2 { "✓" } else { "✗" });
+    println!("  Proof 3 valid: {}", if valid3 { "✓" } else { "✗" });
     
     println!("\n  Proofs are different due to randomness:");
     println!("    Proof 1 commitment == Proof 2 commitment: {}", proof1.commitment == proof2.commitment);
@@ -148,15 +148,15 @@ fn main() {
     let all_valid_tests_pass = is_valid && !is_valid_wrong && !is_valid_wrong_b && valid1 && valid2 && valid3;
     
     if all_valid_tests_pass {
-        println!("\n✅ ALL TESTS PASSED!");
+        println!("\n ALL TESTS PASSED!");
         println!("\nThe ZKP implementation correctly:");
         println!("  • Generates valid proofs for honest computations");
         println!("  • Rejects proofs for incorrect share values");
         println!("  • Rejects proofs for different B components");
         println!("  • Supports multiple proofs (zero-knowledge property)");
-        println!("\nYour ZKP system is cryptographically sound! 🎉");
+        println!("\n___ZKP system is cryptographically sound!___\n");
     } else {
-        println!("\n❌ SOME TESTS FAILED!");
+        println!("\n SOME TESTS FAILED!");
         println!("Please review the implementation.");
     }
 }

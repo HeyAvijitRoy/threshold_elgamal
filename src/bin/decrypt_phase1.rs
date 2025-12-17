@@ -32,19 +32,19 @@ struct Args {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
     
-    // Load player's secret key
+    // Load this player's secret key share from file
     println!("Loading secret key from {}...", args.key_file);
     let key_json = fs::read_to_string(&args.key_file)?;
     let secret_share: SecretKeyShare = serde_json::from_str(&key_json)?;
     
     println!("Player ID: {}", secret_share.player_id);
     
-    // Load ciphertext
+    // Load the ciphertext to be decrypted
     println!("Loading ciphertext from {}...", args.ciphertext);
     let ciphertext_json = fs::read_to_string(&args.ciphertext)?;
     let ciphertext: Ciphertext = serde_json::from_str(&ciphertext_json)?;
     
-    // Parse participating players
+    // Parse the list of players participating in this decryption
     let player_ids: Vec<usize> = args.players
         .split(',')
         .map(|s| s.trim().parse())
@@ -52,7 +52,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     println!("Participating players: {:?}", player_ids);
     
-    // Check if this player is in the list
+    // Validate that this player is authorized to participate
     if !player_ids.contains(&secret_share.player_id) {
         return Err(format!(
             "Player {} is not in the participating players list",
@@ -64,7 +64,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("Need at least 2 players for threshold decryption".into());
     }
     
-    // Compute Lagrange coefficients
+    // Compute Lagrange coefficients for polynomial interpolation
+    // These allow reconstructing the secret from the participating subset of shares
     println!("Computing Lagrange coefficients...");
     let q_bigint = secret_share.public_key.q.to_bigint().unwrap();
     let coefficients = compute_lagrange_coefficients(&player_ids, &q_bigint);
@@ -76,7 +77,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
     
-    // Find this player's coefficient
+    // Extract the Lagrange coefficient for this player
     let player_index = player_ids
         .iter()
         .position(|&id| id == secret_share.player_id)
@@ -90,11 +91,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("  a_pk bits: {}", secret_share.share.bits());
     }
     
-    // Compute exponent: w_k * a_{p_k} mod q
+    // Compute the weighted exponent: w_k * a_{p_k} mod q
+    // This combines the player's share with their Lagrange coefficient
     let share_bigint = secret_share.share.to_bigint().unwrap();
     let exponent = (w_k * share_bigint) % &q_bigint;
     
-    // Ensure positive
+    // Ensure the result is positive (mod q can return negative in BigInt)
     let exponent = if exponent < BigInt::from(0) {
         exponent + &q_bigint
     } else {
@@ -107,7 +109,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("  Exponent (w_k * a_pk mod q) bits: {}", exponent_uint.bits());
     }
     
-    // Compute B^{w_k * a_{p_k}} mod p
+    // Compute the decryption share: B^{w_k * a_{p_k}} mod p
+    // This is this player's contribution to the joint decryption
     println!("Computing decryption share...");
     let share_value = mod_pow(
         &ciphertext.b_component,
@@ -120,7 +123,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("  Share value bits: {}", share_value.bits());
     }
     
-    // Generate Zero-Knowledge Proof
+    // Generate a zero-knowledge proof that this share was computed correctly
+    // This allows other players to verify honesty without revealing the secret
     println!("Generating Zero-Knowledge Proof...");
     let proof = threshold_elgamal::generate_decryption_proof(
         &ciphertext.b_component,

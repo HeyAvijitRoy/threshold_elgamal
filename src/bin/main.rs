@@ -351,10 +351,10 @@ fn decrypt_phase1_interactive() {
     
     println!("Computing decryption share...");
     
-    // Compute B^{w_k * a_{p_k}} mod p
+    // Compute this player's decryption contribution: B^{w_k * a_{p_k}} mod p
     let share_value = mod_pow(&ciphertext.b_component, &exponent_uint, &secret_share.public_key.p);
     
-    // Generate Zero-Knowledge Proof
+    // Generate zero-knowledge proof to prove correctness without revealing secrets
     let proof = generate_decryption_proof(
         &ciphertext.b_component,
         &share_value,
@@ -473,7 +473,8 @@ fn decrypt_phase2_interactive() {
         output_path
     };
     
-    // Verify all ZKPs before combining shares
+    // Verify all zero-knowledge proofs to ensure shares are valid
+    // This prevents malicious players from corrupting the decryption
     println!("\n Verifying Zero-Knowledge Proofs...");
     for share in &decryption_shares {
         let is_valid = verify_decryption_proof(
@@ -496,15 +497,18 @@ fn decrypt_phase2_interactive() {
     
     println!("\n Combining decryption shares...");
     
-    // Combine shares: B^a = ∏ B^{w_k * a_{p_k}}
+    // Multiply all shares to recover B^a = ∏ B^{w_k * a_{p_k}}
+    // Lagrange interpolation happens implicitly through the weighted shares
     let mut b_to_a = BigUint::one();
     for share in &decryption_shares {
         b_to_a = (&b_to_a * &share.share_value) % &public_key.p;
     }
     
+    // Derive the symmetric key from the shared secret
     println!(" Computing AES key...");
     let aes_key = hash_to_key(&b_to_a);
     
+    // Decrypt the message using the recovered key
     println!(" Decrypting message...");
     
     let plaintext = match aes_decrypt(&aes_key, &ciphertext.encrypted_message, &ciphertext.nonce) {

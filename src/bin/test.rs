@@ -92,12 +92,12 @@ fn main() {
         };
         let exponent_uint = exponent.to_biguint().unwrap();
         
-        // Compute B^{w_k * a_{p_k}} mod p
+        // Compute decryption share: B^{w_k * a_{p_k}} mod p
         let share_value = mod_pow(&ciphertext.b_component, &exponent_uint, &p);
         
         println!("  Player {}: share value bits = {}", player_id, share_value.bits());
         
-        // Generate ZKP for this share
+        // Generate zero-knowledge proof for this share
         let proof = generate_decryption_proof(
             &ciphertext.b_component,
             &share_value,
