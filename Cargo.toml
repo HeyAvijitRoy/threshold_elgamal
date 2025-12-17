@@ -19,6 +19,10 @@ name = "test"
 path = "src/bin/test.rs"
 
 [[bin]]
+name = "test_zkp"
+path = "src/bin/test_zkp.rs"
+
+[[bin]]
 name = "keygen"
 path = "src/bin/keygen.rs"
 
