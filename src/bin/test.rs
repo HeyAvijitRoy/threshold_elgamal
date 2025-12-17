@@ -152,13 +152,13 @@ fn main() {
             println!("  Decrypted: {}", decrypted_text);
             
             if plaintext == message {
-                println!("\n✅ SUCCESS! Decryption matches original message!");
+                println!("\n SUCCESS! Decryption matches original message!");
             } else {
-                println!("\n❌ FAILED! Decrypted message doesn't match!");
+                println!("\n FAILED! Decrypted message doesn't match!");
             }
         }
         Err(e) => {
-            println!("\n❌ Decryption failed: {}", e);
+            println!("\n Decryption failed: {}", e);
             
             // Debug: try to compute what the correct shared secret should be
             println!("\nDebug: Computing expected shared secret...");

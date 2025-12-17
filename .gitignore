@@ -76,3 +76,9 @@ __pycache__/
 # Ignore generated inputs/outputs if any
 inputs/**/generated/
 outputs/
+
+# Ignore all json files -- keys are stored in json
+*.json
+
+#Ignore all txt files -- saves decrrypted data
+*.txt
